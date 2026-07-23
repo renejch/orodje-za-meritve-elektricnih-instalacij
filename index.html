@@ -22,8 +22,11 @@
 
 <main>
   <section class="card" aria-labelledby="meta-heading">
-    <h2 id="meta-heading">Podatki o objektu</h2>
-    <div class="field-grid">
+    <div class="card-header-row">
+      <h2 id="meta-heading">Podatki o objektu</h2>
+      <button type="button" id="meta-toggle" class="btn-ghost" aria-expanded="true" aria-controls="meta-fields">Skrij</button>
+    </div>
+    <div class="field-grid" id="meta-fields">
       <label>Naziv objekta
         <input type="text" id="meta-objekt" placeholder="npr. Stanovanjska hiša">
       </label>
@@ -46,6 +49,9 @@
     <h2 id="form-heading"><span id="form-title">Dodaj tokokrog</span></h2>
     <form id="circuit-form" novalidate>
       <div class="field-grid">
+        <label>Razdelilnik
+          <input type="text" id="f-razdelilnik" placeholder="npr. R1 - Glavna omarica">
+        </label>
         <label>Oznaka tokokroga *
           <input type="text" id="f-oznaka" required placeholder="npr. F1">
         </label>
@@ -76,23 +82,41 @@
         <label>Karakteristika
           <select id="f-karakteristika">
             <option value="">—</option>
-            <option>B</option><option>C</option><option>D</option><option>K</option><option>Z</option>
+            <option>B</option><option>C</option><option>D</option><option>K</option><option>Z</option><option>gG</option>
           </select>
         </label>
         <label>Nazivni tok In (A)
           <input type="number" id="f-in" step="0.1" min="0" placeholder="16">
         </label>
-        <label>Čas izklopa (ms)
-          <input type="number" id="f-rcdCas" step="1" min="0" placeholder="npr. 25">
+        <label>Čas izklopa (s)
+          <input type="number" id="f-rcdCas" step="0.01" min="0" placeholder="npr. 0.2">
         </label>
         <label>Impedanca zanke Zs (Ω)
           <input type="number" id="f-zanka" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>Impedanca zanke Zl (Ω)
+          <input type="number" id="f-zanka-l" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>Nazivni tok naprave RCD In (A)
+          <input type="number" id="f-rcd-in" step="0.1" min="0" placeholder="npr. 40">
         </label>
         <label>RCD IΔn (mA)
           <select id="f-rcdIdn">
             <option value="">—</option>
             <option>10</option><option>30</option><option>100</option><option>300</option>
           </select>
+        </label>
+        <label>Izmerjeni izklopni tok Id (mA)
+          <input type="number" id="f-rcd-id" step="0.1" min="0" placeholder="0.0">
+        </label>
+        <label>Čas izklopa td (1×IΔn) (s)
+          <input type="number" id="f-rcd-td1" step="0.01" min="0" placeholder="0.00">
+        </label>
+        <label>Čas izklopa td (5×IΔn) (s)
+          <input type="number" id="f-rcd-td5" step="0.01" min="0" placeholder="0.00">
+        </label>
+        <label>Dotikalna napetost Uc (V)
+          <input type="number" id="f-rcd-uc" step="0.1" min="0" placeholder="0.0">
         </label>
       </div>
 
@@ -102,14 +126,11 @@
 
       <div class="photo-row">
         <label class="photo-label btn-accent">
-          📷 Dodaj fotografijo
-          <input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
+          📷 Dodaj fotografije
+          <input type="file" id="f-foto" accept="image/*" multiple hidden>
         </label>
-        <div id="photo-preview" class="photo-preview" hidden>
-          <img id="photo-preview-img" alt="Predogled fotografije tokokroga">
-          <button type="button" id="photo-remove" class="btn-danger-ghost">Odstrani fotografijo</button>
-        </div>
-        <p class="hint">Fotografija se shrani samo lokalno in ni vključena v izvoz v Excel.</p>
+        <div id="photo-preview" class="photo-preview" hidden></div>
+        <p class="hint">Fotografije se shranijo samo lokalno in niso vključene v izvoz v Excel.</p>
       </div>
 
       <div class="form-actions">
@@ -133,6 +154,7 @@
       <table id="circuit-table">
         <thead>
           <tr>
+            <th>Razdelilnik</th>
             <th>Oznaka</th>
             <th>Naziv</th>
             <th>Tip</th>
@@ -143,9 +165,15 @@
             <th>Izolacija (MΩ)</th>
             <th>Karakteristika</th>
             <th>In (A)</th>
-            <th>Čas izklopa (ms)</th>
+            <th>Čas izklopa (s)</th>
             <th>Zs (Ω)</th>
+            <th>Zl (Ω)</th>
+            <th>RCD In (A)</th>
             <th>RCD IΔn (mA)</th>
+            <th>RCD Id (mA)</th>
+            <th>td 1×IΔn (s)</th>
+            <th>td 5×IΔn (s)</th>
+            <th>Uc (V)</th>
             <th>Opomba</th>
             <th>Foto</th>
             <th class="col-actions"></th>
@@ -164,7 +192,7 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

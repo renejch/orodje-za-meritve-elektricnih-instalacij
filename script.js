@@ -69,6 +69,8 @@ const Store = {
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  metaToggle: $('meta-toggle'),
+  metaFields: $('meta-fields'),
   metaObjekt: $('meta-objekt'),
   metaNaslov: $('meta-naslov'),
   metaDatum: $('meta-datum'),
@@ -80,6 +82,7 @@ const els = {
   submitBtn: $('submit-btn'),
   cancelEdit: $('cancel-edit'),
 
+  fRazdelilnik: $('f-razdelilnik'),
   fOznaka: $('f-oznaka'),
   fNaziv: $('f-naziv'),
   fFazno: $('f-fazno'),
@@ -92,13 +95,17 @@ const els = {
   fIn: $('f-in'),
   fRcdCas: $('f-rcdCas'),
   fZanka: $('f-zanka'),
+  fZankaL: $('f-zanka-l'),
+  fRcdIn: $('f-rcd-in'),
   fRcdIdn: $('f-rcdIdn'),
+  fRcdId: $('f-rcd-id'),
+  fRcdTd1: $('f-rcd-td1'),
+  fRcdTd5: $('f-rcd-td5'),
+  fRcdUc: $('f-rcd-uc'),
   fOpomba: $('f-opomba'),
   fFoto: $('f-foto'),
 
   photoPreview: $('photo-preview'),
-  photoPreviewImg: $('photo-preview-img'),
-  photoRemove: $('photo-remove'),
 
   tbody: $('circuit-tbody'),
   emptyState: $('empty-state'),
@@ -112,7 +119,7 @@ const els = {
 };
 
 let editingId = null;
-let currentPhoto = null; // data URL string or null
+let currentPhotos = []; // array of data URL strings
 
 /* =========================================================
    Helpers
@@ -143,6 +150,20 @@ function fileToDataURL(file) {
   });
 }
 
+function formatKarakteristika(c) {
+  if (!c.karakteristika) return '';
+  return (c.fazno === '3f' ? '3x' : '') + c.karakteristika;
+}
+
+function stripPhasePrefix(value) {
+  return typeof value === 'string' ? value.replace(/^3x/i, '') : value;
+}
+
+function getPhotos(c) {
+  if (Array.isArray(c.fotos)) return c.fotos;
+  return c.foto ? [c.foto] : [];
+}
+
 function slugify(text) {
   return (text || 'Porocilo')
     .toString()
@@ -165,6 +186,7 @@ async function renderTable() {
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
+      <td>${escapeHtml(c.razdelilnik || '—')}</td>
       <td>${escapeHtml(c.oznaka || '—')}</td>
       <td>${escapeHtml(c.naziv)}</td>
       <td>${escapeHtml(c.fazno || '—')}</td>
@@ -173,11 +195,17 @@ async function renderTable() {
       <td class="num">${fmtNum(c.glavnaIzenacitev)}</td>
       <td class="num">${fmtNum(c.dodatnaIzenacitev)}</td>
       <td class="num">${fmtNum(c.izolacija)}</td>
-      <td>${escapeHtml(c.karakteristika || '—')}</td>
+      <td>${escapeHtml(formatKarakteristika(c) || '—')}</td>
       <td class="num">${fmtNum(c.in)}</td>
       <td class="num">${fmtNum(c.rcdCas)}</td>
       <td class="num">${fmtNum(c.zanka)}</td>
+      <td class="num">${fmtNum(c.zankaL)}</td>
+      <td class="num">${fmtNum(c.rcdIn)}</td>
       <td class="num">${fmtNum(c.rcdIdn)}</td>
+      <td class="num">${fmtNum(c.rcdId)}</td>
+      <td class="num">${fmtNum(c.rcdTd1)}</td>
+      <td class="num">${fmtNum(c.rcdTd5)}</td>
+      <td class="num">${fmtNum(c.rcdUc)}</td>
       <td class="note-cell">${escapeHtml(c.opomba || '')}</td>
       <td></td>
       <td class="row-actions">
@@ -186,15 +214,19 @@ async function renderTable() {
       </td>
     `;
 
-    const photoCell = tr.children[14];
-    if (c.foto) {
-      const img = document.createElement('img');
-      img.src = c.foto;
-      img.alt = `Fotografija — ${c.naziv}`;
-      img.className = 'thumb';
-      img.title = 'Klikni za povečavo';
-      img.addEventListener('click', () => window.open(c.foto, '_blank'));
-      photoCell.appendChild(img);
+    const photoCell = tr.children[21];
+    const photos = getPhotos(c);
+    if (photos.length) {
+      photoCell.classList.add('photo-cell');
+      photos.forEach((src, i) => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = `Fotografija ${i + 1} — ${c.naziv}`;
+        img.className = 'thumb';
+        img.title = 'Klikni za povečavo';
+        img.addEventListener('click', () => window.open(src, '_blank'));
+        photoCell.appendChild(img);
+      });
     } else {
       photoCell.innerHTML = '<span class="no-photo">—</span>';
     }
@@ -215,17 +247,31 @@ function escapeHtml(str) {
 function resetForm() {
   els.form.reset();
   editingId = null;
-  currentPhoto = null;
-  els.photoPreview.hidden = true;
-  els.photoPreviewImg.src = '';
+  currentPhotos = [];
+  renderPhotoPreview();
   els.fFoto.value = '';
   els.formTitle.textContent = 'Dodaj tokokrog';
   els.submitBtn.textContent = 'Dodaj tokokrog';
   els.cancelEdit.hidden = true;
 }
 
+function renderPhotoPreview() {
+  els.photoPreview.innerHTML = '';
+  els.photoPreview.hidden = currentPhotos.length === 0;
+  currentPhotos.forEach((src, index) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'photo-thumb';
+    thumb.innerHTML = `
+      <img src="${src}" alt="Fotografija tokokroga ${index + 1}">
+      <button type="button" class="photo-thumb-remove" data-index="${index}" aria-label="Odstrani fotografijo">✕</button>
+    `;
+    els.photoPreview.appendChild(thumb);
+  });
+}
+
 function fillFormForEdit(c) {
   editingId = c.id;
+  els.fRazdelilnik.value = c.razdelilnik || '';
   els.fOznaka.value = c.oznaka || '';
   els.fNaziv.value = c.naziv || '';
   els.fFazno.value = c.fazno || '1f';
@@ -238,16 +284,17 @@ function fillFormForEdit(c) {
   els.fIn.value = c.in ?? '';
   els.fRcdCas.value = c.rcdCas ?? '';
   els.fZanka.value = c.zanka ?? '';
+  els.fZankaL.value = c.zankaL ?? '';
+  els.fRcdIn.value = c.rcdIn ?? '';
   els.fRcdIdn.value = c.rcdIdn ?? '';
+  els.fRcdId.value = c.rcdId ?? '';
+  els.fRcdTd1.value = c.rcdTd1 ?? '';
+  els.fRcdTd5.value = c.rcdTd5 ?? '';
+  els.fRcdUc.value = c.rcdUc ?? '';
   els.fOpomba.value = c.opomba || '';
 
-  currentPhoto = c.foto || null;
-  if (currentPhoto) {
-    els.photoPreviewImg.src = currentPhoto;
-    els.photoPreview.hidden = false;
-  } else {
-    els.photoPreview.hidden = true;
-  }
+  currentPhotos = getPhotos(c).slice();
+  renderPhotoPreview();
 
   els.formTitle.textContent = `Urejanje: ${c.oznaka ? c.oznaka + ' – ' : ''}${c.naziv}`;
   els.submitBtn.textContent = 'Shrani spremembe';
@@ -271,6 +318,7 @@ async function handleSubmit(e) {
   }
 
   const circuit = {
+    razdelilnik: els.fRazdelilnik.value.trim(),
     oznaka: els.fOznaka.value.trim(),
     naziv: els.fNaziv.value.trim(),
     fazno: els.fFazno.value,
@@ -283,9 +331,15 @@ async function handleSubmit(e) {
     in: numOrNull(els.fIn.value),
     rcdCas: numOrNull(els.fRcdCas.value),
     zanka: numOrNull(els.fZanka.value),
+    zankaL: numOrNull(els.fZankaL.value),
+    rcdIn: numOrNull(els.fRcdIn.value),
     rcdIdn: numOrNull(els.fRcdIdn.value),
+    rcdId: numOrNull(els.fRcdId.value),
+    rcdTd1: numOrNull(els.fRcdTd1.value),
+    rcdTd5: numOrNull(els.fRcdTd5.value),
+    rcdUc: numOrNull(els.fRcdUc.value),
     opomba: els.fOpomba.value.trim(),
-    foto: currentPhoto,
+    fotos: currentPhotos.slice(),
   };
 
   if (editingId) {
@@ -302,22 +356,44 @@ async function handleSubmit(e) {
 }
 
 async function handlePhotoInput(e) {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
   try {
-    currentPhoto = await fileToDataURL(file);
-    els.photoPreviewImg.src = currentPhoto;
-    els.photoPreview.hidden = false;
+    const dataUrls = await Promise.all(files.map(fileToDataURL));
+    currentPhotos.push(...dataUrls);
+    renderPhotoPreview();
   } catch {
     showToast('Fotografije ni bilo mogoče naložiti.');
   }
 }
 
-function handlePhotoRemove() {
-  currentPhoto = null;
-  els.fFoto.value = '';
-  els.photoPreview.hidden = true;
-  els.photoPreviewImg.src = '';
+function handlePhotoPreviewClick(e) {
+  const btn = e.target.closest('button[data-index]');
+  if (!btn) return;
+  currentPhotos.splice(Number(btn.dataset.index), 1);
+  renderPhotoPreview();
+}
+
+function handleKarakteristikaChange() {
+  const val = els.fKarakteristika.value;
+  if (val === 'gG') {
+    els.fRcdCas.value = 5;
+  } else if (val === 'C') {
+    els.fRcdCas.value = 0.4;
+  }
+}
+
+function setMetaCollapsed(collapsed) {
+  els.metaFields.hidden = collapsed;
+  els.metaToggle.textContent = collapsed ? 'Prikaži' : 'Skrij';
+  els.metaToggle.setAttribute('aria-expanded', String(!collapsed));
+  localStorage.setItem('meta-collapsed', collapsed ? '1' : '0');
+}
+
+function bindMetaToggle() {
+  setMetaCollapsed(localStorage.getItem('meta-collapsed') === '1');
+  els.metaToggle.addEventListener('click', () => setMetaCollapsed(!els.metaFields.hidden));
 }
 
 async function handleTableClick(e) {
@@ -374,6 +450,104 @@ function bindMetaAutoSave() {
 /* =========================================================
    Export to Excel (photo intentionally excluded)
    ========================================================= */
+const EXPORT_FONT = { name: 'Calibri', sz: 8 };
+
+function applySheetFont(ws, font) {
+  if (!ws['!ref']) return;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      if (!cell) continue;
+      cell.s = { ...(cell.s || {}), font: { ...(cell.s && cell.s.font), ...font } };
+    }
+  }
+}
+
+const META_SHEET_NAME = 'Podatki o objektu';
+const UNASSIGNED_BOX_LABEL = 'Brez razdelilnika';
+
+const CIRCUIT_HEADERS = [
+  'Razdelilnik',
+  'Oznaka tokokroga',
+  'Naziv tokokroga',
+  'Tip tokokroga (1f/3f)',
+  'Število vodnikov',
+  'Prerez vodnika (mm²)',
+  'Glavna izenačevalna povezava (Ω)',
+  'Dodatna izenačevalna povezava (Ω)',
+  'Izolacijska upornost (MΩ)',
+  'Karakteristika',
+  'Nazivni tok In (A)',
+  'Čas izklopa (s)',
+  'Impedanca zanke Zs (Ω)',
+  'Impedanca zanke Zl (Ω)',
+  'Nazivni tok naprave RCD In (A)',
+  'RCD IΔn (mA)',
+  'Izmerjeni izklopni tok Id (mA)',
+  'Čas izklopa td (1×IΔn) (s)',
+  'Čas izklopa td (5×IΔn) (s)',
+  'Dotikalna napetost Uc (V)',
+  'Opomba',
+];
+
+const CIRCUIT_COLS = [
+  { wch: 18 }, { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 12 },
+  { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 },
+  { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
+  { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 30 },
+];
+
+function circuitToRow(c) {
+  return [
+    c.razdelilnik,
+    c.oznaka,
+    c.naziv,
+    c.fazno,
+    c.vodniki,
+    c.prerez,
+    c.glavnaIzenacitev,
+    c.dodatnaIzenacitev,
+    c.izolacija,
+    formatKarakteristika(c),
+    c.in,
+    c.rcdCas,
+    c.zanka,
+    c.zankaL,
+    c.rcdIn,
+    c.rcdIdn,
+    c.rcdId,
+    c.rcdTd1,
+    c.rcdTd5,
+    c.rcdUc,
+    c.opomba,
+  ];
+}
+
+function groupByBox(circuits) {
+  const groups = new Map();
+  for (const c of circuits) {
+    const key = (c.razdelilnik || '').trim() || UNASSIGNED_BOX_LABEL;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+  return groups;
+}
+
+function excelSafeSheetName(name, usedNames) {
+  const cleaned = (name || 'List').replace(/[:\\/?*[\]]/g, ' ').trim() || 'List';
+  let base = cleaned.slice(0, 31);
+  let candidate = base;
+  let i = 2;
+  while (usedNames.has(candidate)) {
+    const suffix = ` (${i})`;
+    candidate = base.slice(0, 31 - suffix.length) + suffix;
+    i += 1;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
 async function handleExport() {
   const circuits = await Store.getAllCircuits();
   if (circuits.length === 0) {
@@ -391,49 +565,19 @@ async function handleExport() {
   ];
   const wsHeader = XLSX.utils.aoa_to_sheet(headerSheetData);
   wsHeader['!cols'] = [{ wch: 20 }, { wch: 40 }];
-
-  const circuitHeaders = [
-    'Oznaka tokokroga',
-    'Naziv tokokroga',
-    'Tip tokokroga (1f/3f)',
-    'Število vodnikov',
-    'Prerez vodnika (mm²)',
-    'Glavna izenačevalna povezava (Ω)',
-    'Dodatna izenačevalna povezava (Ω)',
-    'Izolacijska upornost (MΩ)',
-    'Karakteristika',
-    'Nazivni tok In (A)',
-    'Čas izklopa (ms)',
-    'Impedanca zanke Zs (Ω)',
-    'RCD IΔn (mA)',
-    'Opomba',
-  ];
-  const circuitRows = circuits.map((c) => ([
-    c.oznaka,
-    c.naziv,
-    c.fazno,
-    c.vodniki,
-    c.prerez,
-    c.glavnaIzenacitev,
-    c.dodatnaIzenacitev,
-    c.izolacija,
-    c.karakteristika,
-    c.in,
-    c.rcdCas,
-    c.zanka,
-    c.rcdIdn,
-    c.opomba,
-  ]));
-  const wsCircuits = XLSX.utils.aoa_to_sheet([circuitHeaders, ...circuitRows]);
-  wsCircuits['!cols'] = [
-    { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
-    { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 30 },
-  ];
+  applySheetFont(wsHeader, EXPORT_FONT);
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, wsHeader, 'Podatki o objektu');
-  XLSX.utils.book_append_sheet(wb, wsCircuits, 'Tokokrogi');
+  XLSX.utils.book_append_sheet(wb, wsHeader, META_SHEET_NAME);
+
+  const usedNames = new Set([META_SHEET_NAME]);
+  for (const [boxName, boxCircuits] of groupByBox(circuits)) {
+    const rows = boxCircuits.map(circuitToRow);
+    const ws = XLSX.utils.aoa_to_sheet([CIRCUIT_HEADERS, ...rows]);
+    ws['!cols'] = CIRCUIT_COLS;
+    applySheetFont(ws, EXPORT_FONT);
+    XLSX.utils.book_append_sheet(wb, ws, excelSafeSheetName(boxName, usedNames));
+  }
 
   const filename = `Meritve_${slugify(meta.objekt)}_${meta.datum || 'brez-datuma'}.xlsx`;
   XLSX.writeFile(wb, filename);
@@ -469,9 +613,9 @@ async function handleImportFile(e) {
     return;
   }
 
-  const wsHeader = wb.Sheets['Podatki o objektu'];
-  const wsCircuits = wb.Sheets['Tokokrogi'];
-  if (!wsHeader || !wsCircuits) {
+  const wsHeader = wb.Sheets[META_SHEET_NAME];
+  const boxSheetNames = wb.SheetNames.filter((name) => name !== META_SHEET_NAME);
+  if (!wsHeader || boxSheetNames.length === 0) {
     showToast('Datoteka ni prepoznana kot poročilo te aplikacije.');
     return;
   }
@@ -490,27 +634,39 @@ async function handleImportFile(e) {
     stevilka: headerMap['Številka poročila'] || '',
   };
 
-  const circuitRows = XLSX.utils.sheet_to_json(wsCircuits, { header: 1 });
-  const dataRows = circuitRows.slice(1);
-  const importedCircuits = dataRows
-    .filter((row) => row && row[1])
-    .map((row) => ({
-      oznaka: row[0] != null ? String(row[0]) : '',
-      naziv: row[1] != null ? String(row[1]) : '',
-      fazno: row[2] != null ? String(row[2]) : '',
-      vodniki: numOrNull(row[3]),
-      prerez: numOrNull(row[4]),
-      glavnaIzenacitev: numOrNull(row[5]),
-      dodatnaIzenacitev: numOrNull(row[6]),
-      izolacija: numOrNull(row[7]),
-      karakteristika: row[8] != null ? String(row[8]) : '',
-      in: numOrNull(row[9]),
-      rcdCas: numOrNull(row[10]),
-      zanka: numOrNull(row[11]),
-      rcdIdn: numOrNull(row[12]),
-      opomba: row[13] != null ? String(row[13]) : '',
-      foto: null,
-    }));
+  const importedCircuits = [];
+  for (const sheetName of boxSheetNames) {
+    const dataRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 }).slice(1);
+    dataRows
+      .filter((row) => row && row[2])
+      .forEach((row) => {
+        const razdelilnikCol = row[0] != null ? String(row[0]).trim() : '';
+        importedCircuits.push({
+          razdelilnik: razdelilnikCol || (sheetName === UNASSIGNED_BOX_LABEL ? '' : sheetName),
+          oznaka: row[1] != null ? String(row[1]) : '',
+          naziv: row[2] != null ? String(row[2]) : '',
+          fazno: row[3] != null ? String(row[3]) : '',
+          vodniki: numOrNull(row[4]),
+          prerez: numOrNull(row[5]),
+          glavnaIzenacitev: numOrNull(row[6]),
+          dodatnaIzenacitev: numOrNull(row[7]),
+          izolacija: numOrNull(row[8]),
+          karakteristika: row[9] != null ? stripPhasePrefix(String(row[9])) : '',
+          in: numOrNull(row[10]),
+          rcdCas: numOrNull(row[11]),
+          zanka: numOrNull(row[12]),
+          zankaL: numOrNull(row[13]),
+          rcdIn: numOrNull(row[14]),
+          rcdIdn: numOrNull(row[15]),
+          rcdId: numOrNull(row[16]),
+          rcdTd1: numOrNull(row[17]),
+          rcdTd5: numOrNull(row[18]),
+          rcdUc: numOrNull(row[19]),
+          opomba: row[20] != null ? String(row[20]) : '',
+          fotos: [],
+        });
+      });
+  }
 
   if (importedCircuits.length === 0) {
     showToast('V datoteki ni bilo najdenih tokokrogov.');
@@ -556,11 +712,13 @@ async function init() {
     els.metaStevilka.value = meta.stevilka || '';
   }
   bindMetaAutoSave();
+  bindMetaToggle();
 
   els.form.addEventListener('submit', handleSubmit);
   els.cancelEdit.addEventListener('click', resetForm);
   els.fFoto.addEventListener('change', handlePhotoInput);
-  els.photoRemove.addEventListener('click', handlePhotoRemove);
+  els.photoPreview.addEventListener('click', handlePhotoPreviewClick);
+  els.fKarakteristika.addEventListener('change', handleKarakteristikaChange);
   els.tbody.addEventListener('click', handleTableClick);
   els.exportBtn.addEventListener('click', handleExport);
   els.importFile.addEventListener('change', handleImportFile);
