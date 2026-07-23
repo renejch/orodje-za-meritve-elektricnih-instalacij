@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meritve električnih inštalacij</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grid-backdrop" aria-hidden="true"></div>
+
+<header class="titleblock">
+  <div class="titleblock__badge" aria-hidden="true">⚡</div>
+  <div class="titleblock__main">
+    <h1>Meritve električnih inštalacij</h1>
+    <p class="titleblock__sub">Evidenca meritev tokokrogov in izvoz poročila</p>
+  </div>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="meta-heading">
+    <h2 id="meta-heading">Podatki o objektu</h2>
+    <div class="field-grid">
+      <label>Naziv objekta
+        <input type="text" id="meta-objekt" placeholder="npr. Stanovanjska hiša">
+      </label>
+      <label>Naslov
+        <input type="text" id="meta-naslov" placeholder="npr. Mariborska cesta 5, Maribor">
+      </label>
+      <label>Datum meritve
+        <input type="date" id="meta-datum">
+      </label>
+      <label>Izvajalec meritev
+        <input type="text" id="meta-izvajalec" placeholder="Ime in priimek">
+      </label>
+      <label>Številka poročila
+        <input type="text" id="meta-stevilka" placeholder="npr. 2026-014">
+      </label>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="form-heading">
+    <h2 id="form-heading"><span id="form-title">Dodaj tokokrog</span></h2>
+    <form id="circuit-form" novalidate>
+      <div class="field-grid">
+        <label>Naziv tokokroga *
+          <input type="text" id="f-naziv" required placeholder="npr. Kuhinja - vtičnice">
+        </label>
+        <label>Tip zaščite
+          <select id="f-tip">
+            <option value="Odklopnik">Odklopnik</option>
+            <option value="Talilna varovalka">Talilna varovalka</option>
+            <option value="Drugo">Drugo</option>
+          </select>
+        </label>
+        <label>Karakteristika
+          <select id="f-karakteristika">
+            <option value="">—</option>
+            <option>B</option><option>C</option><option>D</option><option>K</option><option>Z</option>
+          </select>
+        </label>
+        <label>Nazivni tok In (A)
+          <input type="number" id="f-in" step="0.1" min="0" placeholder="16">
+        </label>
+        <label>Prerez vodnika (mm²)
+          <input type="number" id="f-prerez" step="0.1" min="0" placeholder="2.5">
+        </label>
+        <label>Izolacijska upornost (MΩ)
+          <input type="number" id="f-izolacija" step="0.01" min="0" placeholder="npr. 250">
+        </label>
+        <label>Impedanca zanke Zs (Ω)
+          <input type="number" id="f-zanka" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>Kontinuiteta PE (Ω)
+          <input type="number" id="f-kontinuiteta" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>RCD IΔn (mA)
+          <select id="f-rcdIdn">
+            <option value="">—</option>
+            <option>10</option><option>30</option><option>100</option><option>300</option>
+          </select>
+        </label>
+        <label>RCD čas izklopa (ms)
+          <input type="number" id="f-rcdCas" step="1" min="0" placeholder="npr. 25">
+        </label>
+      </div>
+
+      <label class="full">Opomba
+        <textarea id="f-opomba" rows="2" placeholder="Dodatne opombe k tokokrogu ..."></textarea>
+      </label>
+
+      <div class="photo-row">
+        <label class="photo-label btn-ghost">
+          📷 Dodaj fotografijo
+          <input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
+        </label>
+        <div id="photo-preview" class="photo-preview" hidden>
+          <img id="photo-preview-img" alt="Predogled fotografije tokokroga">
+          <button type="button" id="photo-remove" class="btn-danger-ghost">Odstrani fotografijo</button>
+        </div>
+        <p class="hint">Fotografija se shrani samo lokalno in ni vključena v izvoz v Excel.</p>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-accent" id="submit-btn">Dodaj tokokrog</button>
+        <button type="button" class="btn-ghost" id="cancel-edit" hidden>Prekliči urejanje</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="table-heading">
+    <div class="card-header-row">
+      <h2 id="table-heading">Tokokrogi <span id="circuit-count" class="count-badge">0</span></h2>
+      <div class="table-actions">
+        <button type="button" id="export-btn" class="btn-accent">Izvozi v Excel</button>
+        <button type="button" id="clear-all-btn" class="btn-danger-ghost">Izbriši vse</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="circuit-table">
+        <thead>
+          <tr>
+            <th>Naziv</th>
+            <th>Zaščita</th>
+            <th>In (A)</th>
+            <th>Prerez (mm²)</th>
+            <th>Izolacija (MΩ)</th>
+            <th>Zs (Ω)</th>
+            <th>PE (Ω)</th>
+            <th>RCD</th>
+            <th>Opomba</th>
+            <th>Foto</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="circuit-tbody"></tbody>
+      </table>
+      <p id="empty-state" class="empty-state">Ni še vnesenih tokokrogov. Dodajte prvega zgoraj.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Podatki se shranjujejo lokalno v tem brskalniku (IndexedDB) — brez strežnika.</p>
+</footer>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
