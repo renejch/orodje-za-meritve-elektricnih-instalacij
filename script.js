@@ -438,6 +438,22 @@ function currentMeta() {
   };
 }
 
+const META_DEFAULT_TEXT = 'Ni podatka';
+
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function metaWithDefaults(meta) {
+  return {
+    objekt: meta.objekt || META_DEFAULT_TEXT,
+    naslov: meta.naslov || META_DEFAULT_TEXT,
+    datum: meta.datum || todayDateString(),
+    izvajalec: meta.izvajalec || META_DEFAULT_TEXT,
+    stevilka: meta.stevilka || META_DEFAULT_TEXT,
+  };
+}
+
 async function persistMeta() {
   await Store.saveMeta(currentMeta());
 }
@@ -554,7 +570,7 @@ async function handleExport() {
     showToast('Ni podatkov za izvoz.');
     return;
   }
-  const meta = currentMeta();
+  const meta = metaWithDefaults(currentMeta());
 
   const headerSheetData = [
     ['Naziv objekta', meta.objekt],
@@ -579,7 +595,7 @@ async function handleExport() {
     XLSX.utils.book_append_sheet(wb, ws, excelSafeSheetName(boxName, usedNames));
   }
 
-  const filename = `Meritve_${slugify(meta.objekt)}_${meta.datum || 'brez-datuma'}.xlsx`;
+  const filename = `Meritve_${slugify(meta.objekt)}_${meta.datum}.xlsx`;
   XLSX.writeFile(wb, filename);
   showToast('Excel datoteka izvožena (brez fotografij).');
 }
@@ -710,6 +726,9 @@ async function init() {
     els.metaDatum.value = meta.datum || '';
     els.metaIzvajalec.value = meta.izvajalec || '';
     els.metaStevilka.value = meta.stevilka || '';
+  }
+  if (!els.metaDatum.value) {
+    els.metaDatum.value = todayDateString();
   }
   bindMetaAutoSave();
   bindMetaToggle();
