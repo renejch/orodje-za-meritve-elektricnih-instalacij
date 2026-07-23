@@ -46,15 +46,32 @@
     <h2 id="form-heading"><span id="form-title">Dodaj tokokrog</span></h2>
     <form id="circuit-form" novalidate>
       <div class="field-grid">
+        <label>Oznaka tokokroga *
+          <input type="text" id="f-oznaka" required placeholder="npr. F1">
+        </label>
         <label>Naziv tokokroga *
           <input type="text" id="f-naziv" required placeholder="npr. Kuhinja - vtičnice">
         </label>
-        <label>Tip zaščite
-          <select id="f-tip">
-            <option value="Odklopnik">Odklopnik</option>
-            <option value="Talilna varovalka">Talilna varovalka</option>
-            <option value="Drugo">Drugo</option>
+        <label>Tip tokokroga
+          <select id="f-fazno">
+            <option value="1f">1f (enofazni)</option>
+            <option value="3f">3f (trifazni)</option>
           </select>
+        </label>
+        <label>Število vodnikov
+          <input type="number" id="f-vodniki" step="1" min="0" placeholder="npr. 3">
+        </label>
+        <label>Prerez vodnika (mm²)
+          <input type="number" id="f-prerez" step="0.1" min="0" placeholder="2.5">
+        </label>
+        <label>Glavna izenačevalna povezava (Ω)
+          <input type="number" id="f-glavna-izenacitev" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>Dodatna izenačevalna povezava (Ω)
+          <input type="number" id="f-dodatna-izenacitev" step="0.001" min="0" placeholder="0.000">
+        </label>
+        <label>Izolacijska upornost (MΩ)
+          <input type="number" id="f-izolacija" step="0.01" min="0" placeholder="npr. 250">
         </label>
         <label>Karakteristika
           <select id="f-karakteristika">
@@ -65,26 +82,17 @@
         <label>Nazivni tok In (A)
           <input type="number" id="f-in" step="0.1" min="0" placeholder="16">
         </label>
-        <label>Prerez vodnika (mm²)
-          <input type="number" id="f-prerez" step="0.1" min="0" placeholder="2.5">
-        </label>
-        <label>Izolacijska upornost (MΩ)
-          <input type="number" id="f-izolacija" step="0.01" min="0" placeholder="npr. 250">
+        <label>Čas izklopa (ms)
+          <input type="number" id="f-rcdCas" step="1" min="0" placeholder="npr. 25">
         </label>
         <label>Impedanca zanke Zs (Ω)
           <input type="number" id="f-zanka" step="0.001" min="0" placeholder="0.000">
-        </label>
-        <label>Kontinuiteta PE (Ω)
-          <input type="number" id="f-kontinuiteta" step="0.001" min="0" placeholder="0.000">
         </label>
         <label>RCD IΔn (mA)
           <select id="f-rcdIdn">
             <option value="">—</option>
             <option>10</option><option>30</option><option>100</option><option>300</option>
           </select>
-        </label>
-        <label>RCD čas izklopa (ms)
-          <input type="number" id="f-rcdCas" step="1" min="0" placeholder="npr. 25">
         </label>
       </div>
 
@@ -93,7 +101,7 @@
       </label>
 
       <div class="photo-row">
-        <label class="photo-label btn-ghost">
+        <label class="photo-label btn-accent">
           📷 Dodaj fotografijo
           <input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
         </label>
@@ -116,7 +124,7 @@
       <h2 id="table-heading">Tokokrogi <span id="circuit-count" class="count-badge">0</span></h2>
       <div class="table-actions">
         <button type="button" id="export-btn" class="btn-accent">Izvozi v Excel</button>
-        <label class="btn-ghost photo-label" for="import-file">📥 Uvozi poročilo</label>
+        <label class="btn-accent photo-label" for="import-file">📥 Uvozi poročilo</label>
         <input type="file" id="import-file" accept=".xlsx" hidden>
         <button type="button" id="clear-all-btn" class="btn-danger-ghost">Izbriši vse</button>
       </div>
@@ -125,14 +133,19 @@
       <table id="circuit-table">
         <thead>
           <tr>
+            <th>Oznaka</th>
             <th>Naziv</th>
-            <th>Zaščita</th>
-            <th>In (A)</th>
+            <th>Tip</th>
+            <th>Vodniki</th>
             <th>Prerez (mm²)</th>
+            <th>Glavna izen. (Ω)</th>
+            <th>Dodatna izen. (Ω)</th>
             <th>Izolacija (MΩ)</th>
+            <th>Karakteristika</th>
+            <th>In (A)</th>
+            <th>Čas izklopa (ms)</th>
             <th>Zs (Ω)</th>
-            <th>PE (Ω)</th>
-            <th>RCD</th>
+            <th>RCD IΔn (mA)</th>
             <th>Opomba</th>
             <th>Foto</th>
             <th class="col-actions"></th>

@@ -80,16 +80,19 @@ const els = {
   submitBtn: $('submit-btn'),
   cancelEdit: $('cancel-edit'),
 
+  fOznaka: $('f-oznaka'),
   fNaziv: $('f-naziv'),
-  fTip: $('f-tip'),
+  fFazno: $('f-fazno'),
+  fVodniki: $('f-vodniki'),
+  fPrerez: $('f-prerez'),
+  fGlavnaIzenacitev: $('f-glavna-izenacitev'),
+  fDodatnaIzenacitev: $('f-dodatna-izenacitev'),
+  fIzolacija: $('f-izolacija'),
   fKarakteristika: $('f-karakteristika'),
   fIn: $('f-in'),
-  fPrerez: $('f-prerez'),
-  fIzolacija: $('f-izolacija'),
-  fZanka: $('f-zanka'),
-  fKontinuiteta: $('f-kontinuiteta'),
-  fRcdIdn: $('f-rcdIdn'),
   fRcdCas: $('f-rcdCas'),
+  fZanka: $('f-zanka'),
+  fRcdIdn: $('f-rcdIdn'),
   fOpomba: $('f-opomba'),
   fFoto: $('f-foto'),
 
@@ -161,19 +164,20 @@ async function renderTable() {
   for (const c of circuits) {
     const tr = document.createElement('tr');
 
-    const rcdText = (c.rcdIdn || c.rcdCas)
-      ? `${c.rcdIdn ?? '—'} mA / ${c.rcdCas ?? '—'} ms`
-      : '—';
-
     tr.innerHTML = `
+      <td>${escapeHtml(c.oznaka || '—')}</td>
       <td>${escapeHtml(c.naziv)}</td>
-      <td>${escapeHtml(c.tip || '—')}${c.karakteristika ? ' ' + escapeHtml(c.karakteristika) : ''}</td>
-      <td class="num">${fmtNum(c.in)}</td>
+      <td>${escapeHtml(c.fazno || '—')}</td>
+      <td class="num">${fmtNum(c.vodniki)}</td>
       <td class="num">${fmtNum(c.prerez)}</td>
+      <td class="num">${fmtNum(c.glavnaIzenacitev)}</td>
+      <td class="num">${fmtNum(c.dodatnaIzenacitev)}</td>
       <td class="num">${fmtNum(c.izolacija)}</td>
+      <td>${escapeHtml(c.karakteristika || '—')}</td>
+      <td class="num">${fmtNum(c.in)}</td>
+      <td class="num">${fmtNum(c.rcdCas)}</td>
       <td class="num">${fmtNum(c.zanka)}</td>
-      <td class="num">${fmtNum(c.kontinuiteta)}</td>
-      <td class="num">${rcdText}</td>
+      <td class="num">${fmtNum(c.rcdIdn)}</td>
       <td class="note-cell">${escapeHtml(c.opomba || '')}</td>
       <td></td>
       <td class="row-actions">
@@ -182,7 +186,7 @@ async function renderTable() {
       </td>
     `;
 
-    const photoCell = tr.children[9];
+    const photoCell = tr.children[14];
     if (c.foto) {
       const img = document.createElement('img');
       img.src = c.foto;
@@ -222,16 +226,19 @@ function resetForm() {
 
 function fillFormForEdit(c) {
   editingId = c.id;
+  els.fOznaka.value = c.oznaka || '';
   els.fNaziv.value = c.naziv || '';
-  els.fTip.value = c.tip || 'Odklopnik';
+  els.fFazno.value = c.fazno || '1f';
+  els.fVodniki.value = c.vodniki ?? '';
+  els.fPrerez.value = c.prerez ?? '';
+  els.fGlavnaIzenacitev.value = c.glavnaIzenacitev ?? '';
+  els.fDodatnaIzenacitev.value = c.dodatnaIzenacitev ?? '';
+  els.fIzolacija.value = c.izolacija ?? '';
   els.fKarakteristika.value = c.karakteristika || '';
   els.fIn.value = c.in ?? '';
-  els.fPrerez.value = c.prerez ?? '';
-  els.fIzolacija.value = c.izolacija ?? '';
-  els.fZanka.value = c.zanka ?? '';
-  els.fKontinuiteta.value = c.kontinuiteta ?? '';
-  els.fRcdIdn.value = c.rcdIdn ?? '';
   els.fRcdCas.value = c.rcdCas ?? '';
+  els.fZanka.value = c.zanka ?? '';
+  els.fRcdIdn.value = c.rcdIdn ?? '';
   els.fOpomba.value = c.opomba || '';
 
   currentPhoto = c.foto || null;
@@ -242,7 +249,7 @@ function fillFormForEdit(c) {
     els.photoPreview.hidden = true;
   }
 
-  els.formTitle.textContent = `Urejanje: ${c.naziv}`;
+  els.formTitle.textContent = `Urejanje: ${c.oznaka ? c.oznaka + ' – ' : ''}${c.naziv}`;
   els.submitBtn.textContent = 'Shrani spremembe';
   els.cancelEdit.hidden = false;
   els.form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -251,6 +258,12 @@ function fillFormForEdit(c) {
 async function handleSubmit(e) {
   e.preventDefault();
 
+  if (!els.fOznaka.value.trim()) {
+    els.fOznaka.focus();
+    showToast('Oznaka tokokroga je obvezna.');
+    return;
+  }
+
   if (!els.fNaziv.value.trim()) {
     els.fNaziv.focus();
     showToast('Naziv tokokroga je obvezen.');
@@ -258,16 +271,19 @@ async function handleSubmit(e) {
   }
 
   const circuit = {
+    oznaka: els.fOznaka.value.trim(),
     naziv: els.fNaziv.value.trim(),
-    tip: els.fTip.value,
+    fazno: els.fFazno.value,
+    vodniki: numOrNull(els.fVodniki.value),
+    prerez: numOrNull(els.fPrerez.value),
+    glavnaIzenacitev: numOrNull(els.fGlavnaIzenacitev.value),
+    dodatnaIzenacitev: numOrNull(els.fDodatnaIzenacitev.value),
+    izolacija: numOrNull(els.fIzolacija.value),
     karakteristika: els.fKarakteristika.value,
     in: numOrNull(els.fIn.value),
-    prerez: numOrNull(els.fPrerez.value),
-    izolacija: numOrNull(els.fIzolacija.value),
-    zanka: numOrNull(els.fZanka.value),
-    kontinuiteta: numOrNull(els.fKontinuiteta.value),
-    rcdIdn: numOrNull(els.fRcdIdn.value),
     rcdCas: numOrNull(els.fRcdCas.value),
+    zanka: numOrNull(els.fZanka.value),
+    rcdIdn: numOrNull(els.fRcdIdn.value),
     opomba: els.fOpomba.value.trim(),
     foto: currentPhoto,
   };
@@ -377,35 +393,42 @@ async function handleExport() {
   wsHeader['!cols'] = [{ wch: 20 }, { wch: 40 }];
 
   const circuitHeaders = [
+    'Oznaka tokokroga',
     'Naziv tokokroga',
-    'Tip zaščite',
+    'Tip tokokroga (1f/3f)',
+    'Število vodnikov',
+    'Prerez vodnika (mm²)',
+    'Glavna izenačevalna povezava (Ω)',
+    'Dodatna izenačevalna povezava (Ω)',
+    'Izolacijska upornost (MΩ)',
     'Karakteristika',
     'Nazivni tok In (A)',
-    'Prerez vodnika (mm²)',
-    'Izolacijska upornost (MΩ)',
+    'Čas izklopa (ms)',
     'Impedanca zanke Zs (Ω)',
-    'Kontinuiteta PE (Ω)',
     'RCD IΔn (mA)',
-    'RCD čas izklopa (ms)',
     'Opomba',
   ];
   const circuitRows = circuits.map((c) => ([
+    c.oznaka,
     c.naziv,
-    c.tip,
+    c.fazno,
+    c.vodniki,
+    c.prerez,
+    c.glavnaIzenacitev,
+    c.dodatnaIzenacitev,
+    c.izolacija,
     c.karakteristika,
     c.in,
-    c.prerez,
-    c.izolacija,
-    c.zanka,
-    c.kontinuiteta,
-    c.rcdIdn,
     c.rcdCas,
+    c.zanka,
+    c.rcdIdn,
     c.opomba,
   ]));
   const wsCircuits = XLSX.utils.aoa_to_sheet([circuitHeaders, ...circuitRows]);
   wsCircuits['!cols'] = [
-    { wch: 24 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 12 },
-    { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 },
+    { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+    { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 30 },
   ];
 
   const wb = XLSX.utils.book_new();
@@ -470,19 +493,22 @@ async function handleImportFile(e) {
   const circuitRows = XLSX.utils.sheet_to_json(wsCircuits, { header: 1 });
   const dataRows = circuitRows.slice(1);
   const importedCircuits = dataRows
-    .filter((row) => row && row[0])
+    .filter((row) => row && row[1])
     .map((row) => ({
-      naziv: row[0] != null ? String(row[0]) : '',
-      tip: row[1] != null ? String(row[1]) : '',
-      karakteristika: row[2] != null ? String(row[2]) : '',
-      in: numOrNull(row[3]),
+      oznaka: row[0] != null ? String(row[0]) : '',
+      naziv: row[1] != null ? String(row[1]) : '',
+      fazno: row[2] != null ? String(row[2]) : '',
+      vodniki: numOrNull(row[3]),
       prerez: numOrNull(row[4]),
-      izolacija: numOrNull(row[5]),
-      zanka: numOrNull(row[6]),
-      kontinuiteta: numOrNull(row[7]),
-      rcdIdn: numOrNull(row[8]),
-      rcdCas: numOrNull(row[9]),
-      opomba: row[10] != null ? String(row[10]) : '',
+      glavnaIzenacitev: numOrNull(row[5]),
+      dodatnaIzenacitev: numOrNull(row[6]),
+      izolacija: numOrNull(row[7]),
+      karakteristika: row[8] != null ? String(row[8]) : '',
+      in: numOrNull(row[9]),
+      rcdCas: numOrNull(row[10]),
+      zanka: numOrNull(row[11]),
+      rcdIdn: numOrNull(row[12]),
+      opomba: row[13] != null ? String(row[13]) : '',
       foto: null,
     }));
 

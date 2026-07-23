@@ -219,7 +219,7 @@ input::placeholder, textarea::placeholder { color: #5b6570; }
 }
 
 /* ---------- Buttons ---------- */
-button {
+button, label.btn-accent, label.btn-ghost, label.btn-danger-ghost {
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
