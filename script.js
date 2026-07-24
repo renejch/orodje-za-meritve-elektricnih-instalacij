@@ -69,6 +69,7 @@ const Store = {
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  expressModeToggle: $('express-mode-toggle'),
   metaToggle: $('meta-toggle'),
   metaFields: $('meta-fields'),
   metaObjekt: $('meta-objekt'),
@@ -102,6 +103,7 @@ const els = {
   fRcdTd1: $('f-rcd-td1'),
   fRcdTd5: $('f-rcd-td5'),
   fRcdUc: $('f-rcd-uc'),
+  fNeustrezno: $('f-neustrezno'),
   fOpomba: $('f-opomba'),
   fFoto: $('f-foto'),
 
@@ -186,6 +188,7 @@ async function renderTable() {
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
+      <td><span class="status-dot ${c.neustrezno ? 'status-bad' : 'status-ok'}" title="${c.neustrezno ? 'Ne ustreza' : 'Skladno'}"></span></td>
       <td>${escapeHtml(c.razdelilnik || '—')}</td>
       <td>${escapeHtml(c.oznaka || '—')}</td>
       <td>${escapeHtml(c.naziv)}</td>
@@ -214,7 +217,7 @@ async function renderTable() {
       </td>
     `;
 
-    const photoCell = tr.children[21];
+    const photoCell = tr.children[22];
     const photos = getPhotos(c);
     if (photos.length) {
       photoCell.classList.add('photo-cell');
@@ -291,6 +294,7 @@ function fillFormForEdit(c) {
   els.fRcdTd1.value = c.rcdTd1 ?? '';
   els.fRcdTd5.value = c.rcdTd5 ?? '';
   els.fRcdUc.value = c.rcdUc ?? '';
+  els.fNeustrezno.checked = !!c.neustrezno;
   els.fOpomba.value = c.opomba || '';
 
   currentPhotos = getPhotos(c).slice();
@@ -338,6 +342,7 @@ async function handleSubmit(e) {
     rcdTd1: numOrNull(els.fRcdTd1.value),
     rcdTd5: numOrNull(els.fRcdTd5.value),
     rcdUc: numOrNull(els.fRcdUc.value),
+    neustrezno: els.fNeustrezno.checked,
     opomba: els.fOpomba.value.trim(),
     fotos: currentPhotos.slice(),
   };
@@ -394,6 +399,17 @@ function setMetaCollapsed(collapsed) {
 function bindMetaToggle() {
   setMetaCollapsed(localStorage.getItem('meta-collapsed') === '1');
   els.metaToggle.addEventListener('click', () => setMetaCollapsed(!els.metaFields.hidden));
+}
+
+function setExpressMode(enabled) {
+  document.body.classList.toggle('express-mode', enabled);
+  els.expressModeToggle.checked = enabled;
+  localStorage.setItem('express-mode', enabled ? '1' : '0');
+}
+
+function bindExpressMode() {
+  setExpressMode(localStorage.getItem('express-mode') === '1');
+  els.expressModeToggle.addEventListener('change', () => setExpressMode(els.expressModeToggle.checked));
 }
 
 async function handleTableClick(e) {
@@ -550,6 +566,26 @@ function groupByBox(circuits) {
   return groups;
 }
 
+const NON_COMPLIANT_FILL = { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } };
+
+function applyRowFill(ws, rowIndex, fill) {
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({ r: rowIndex, c });
+    const cell = ws[addr];
+    if (!cell) continue;
+    cell.s = { ...(cell.s || {}), fill };
+  }
+}
+
+function isRowFlagged(ws, rowIndex) {
+  // On read, SheetJS flattens fill info directly onto cell.s (cell.s.fgColor),
+  // unlike the write-side shape (cell.s.fill.fgColor) used when building the export.
+  const cell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })];
+  return !!(cell && cell.s && cell.s.fgColor
+    && cell.s.fgColor.rgb === NON_COMPLIANT_FILL.fgColor.rgb);
+}
+
 function excelSafeSheetName(name, usedNames) {
   const cleaned = (name || 'List').replace(/[:\\/?*[\]]/g, ' ').trim() || 'List';
   let base = cleaned.slice(0, 31);
@@ -589,8 +625,11 @@ async function handleExport() {
   const usedNames = new Set([META_SHEET_NAME]);
   for (const [boxName, boxCircuits] of groupByBox(circuits)) {
     const rows = boxCircuits.map(circuitToRow);
-    const ws = XLSX.utils.aoa_to_sheet([CIRCUIT_HEADERS, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([CIRCUIT_HEADERS, ...rows], { sheetStubs: true });
     ws['!cols'] = CIRCUIT_COLS;
+    boxCircuits.forEach((c, i) => {
+      if (c.neustrezno) applyRowFill(ws, i + 1, NON_COMPLIANT_FILL);
+    });
     applySheetFont(ws, EXPORT_FONT);
     XLSX.utils.book_append_sheet(wb, ws, excelSafeSheetName(boxName, usedNames));
   }
@@ -623,7 +662,7 @@ async function handleImportFile(e) {
   let wb;
   try {
     const buffer = await file.arrayBuffer();
-    wb = XLSX.read(buffer, { type: 'array' });
+    wb = XLSX.read(buffer, { type: 'array', cellStyles: true });
   } catch {
     showToast('Datoteke ni bilo mogoče prebrati.');
     return;
@@ -652,36 +691,37 @@ async function handleImportFile(e) {
 
   const importedCircuits = [];
   for (const sheetName of boxSheetNames) {
-    const dataRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 }).slice(1);
-    dataRows
-      .filter((row) => row && row[2])
-      .forEach((row) => {
-        const razdelilnikCol = row[0] != null ? String(row[0]).trim() : '';
-        importedCircuits.push({
-          razdelilnik: razdelilnikCol || (sheetName === UNASSIGNED_BOX_LABEL ? '' : sheetName),
-          oznaka: row[1] != null ? String(row[1]) : '',
-          naziv: row[2] != null ? String(row[2]) : '',
-          fazno: row[3] != null ? String(row[3]) : '',
-          vodniki: numOrNull(row[4]),
-          prerez: numOrNull(row[5]),
-          glavnaIzenacitev: numOrNull(row[6]),
-          dodatnaIzenacitev: numOrNull(row[7]),
-          izolacija: numOrNull(row[8]),
-          karakteristika: row[9] != null ? stripPhasePrefix(String(row[9])) : '',
-          in: numOrNull(row[10]),
-          rcdCas: numOrNull(row[11]),
-          zanka: numOrNull(row[12]),
-          zankaL: numOrNull(row[13]),
-          rcdIn: numOrNull(row[14]),
-          rcdIdn: numOrNull(row[15]),
-          rcdId: numOrNull(row[16]),
-          rcdTd1: numOrNull(row[17]),
-          rcdTd5: numOrNull(row[18]),
-          rcdUc: numOrNull(row[19]),
-          opomba: row[20] != null ? String(row[20]) : '',
-          fotos: [],
-        });
+    const ws = wb.Sheets[sheetName];
+    const dataRows = XLSX.utils.sheet_to_json(ws, { header: 1 }).slice(1);
+    dataRows.forEach((row, i) => {
+      if (!row || !row[2]) return;
+      const razdelilnikCol = row[0] != null ? String(row[0]).trim() : '';
+      importedCircuits.push({
+        neustrezno: isRowFlagged(ws, i + 1),
+        razdelilnik: razdelilnikCol || (sheetName === UNASSIGNED_BOX_LABEL ? '' : sheetName),
+        oznaka: row[1] != null ? String(row[1]) : '',
+        naziv: row[2] != null ? String(row[2]) : '',
+        fazno: row[3] != null ? String(row[3]) : '',
+        vodniki: numOrNull(row[4]),
+        prerez: numOrNull(row[5]),
+        glavnaIzenacitev: numOrNull(row[6]),
+        dodatnaIzenacitev: numOrNull(row[7]),
+        izolacija: numOrNull(row[8]),
+        karakteristika: row[9] != null ? stripPhasePrefix(String(row[9])) : '',
+        in: numOrNull(row[10]),
+        rcdCas: numOrNull(row[11]),
+        zanka: numOrNull(row[12]),
+        zankaL: numOrNull(row[13]),
+        rcdIn: numOrNull(row[14]),
+        rcdIdn: numOrNull(row[15]),
+        rcdId: numOrNull(row[16]),
+        rcdTd1: numOrNull(row[17]),
+        rcdTd5: numOrNull(row[18]),
+        rcdUc: numOrNull(row[19]),
+        opomba: row[20] != null ? String(row[20]) : '',
+        fotos: [],
       });
+    });
   }
 
   if (importedCircuits.length === 0) {
@@ -732,6 +772,7 @@ async function init() {
   }
   bindMetaAutoSave();
   bindMetaToggle();
+  bindExpressMode();
 
   els.form.addEventListener('submit', handleSubmit);
   els.cancelEdit.addEventListener('click', resetForm);

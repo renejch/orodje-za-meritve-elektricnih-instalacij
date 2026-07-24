@@ -21,7 +21,14 @@
 </header>
 
 <main>
-  <section class="card" aria-labelledby="meta-heading">
+  <div class="express-bar">
+    <label class="express-toggle">
+      <input type="checkbox" id="express-mode-toggle">
+      Express način <span class="hint">(skrije podatke o objektu ter manj pogosto uporabljena polja meritev)</span>
+    </label>
+  </div>
+
+  <section class="card" id="meta-section" aria-labelledby="meta-heading">
     <div class="card-header-row">
       <h2 id="meta-heading">Podatki o objektu</h2>
       <button type="button" id="meta-toggle" class="btn-ghost" aria-expanded="true" aria-controls="meta-fields">Skrij</button>
@@ -73,10 +80,10 @@
         <label>Glavna izenačevalna povezava (Ω)
           <input type="number" id="f-glavna-izenacitev" step="0.001" min="0" placeholder="0.000">
         </label>
-        <label>Dodatna izenačevalna povezava (Ω)
+        <label class="field-express-hide">Dodatna izenačevalna povezava (Ω)
           <input type="number" id="f-dodatna-izenacitev" step="0.001" min="0" placeholder="0.000">
         </label>
-        <label>Izolacijska upornost (MΩ)
+        <label class="field-express-hide">Izolacijska upornost (MΩ)
           <input type="number" id="f-izolacija" step="0.01" min="0" placeholder="npr. 250">
         </label>
         <label>Karakteristika
@@ -120,6 +127,11 @@
         </label>
       </div>
 
+      <label class="checkbox-field checkbox-field--danger">
+        <input type="checkbox" id="f-neustrezno">
+        Ne ustreza (izvozi z rdečo označbo)
+      </label>
+
       <label class="full">Opomba
         <textarea id="f-opomba" rows="2" placeholder="Dodatne opombe k tokokrogu ..."></textarea>
       </label>
@@ -154,6 +166,7 @@
       <table id="circuit-table">
         <thead>
           <tr>
+            <th>Status</th>
             <th>Razdelilnik</th>
             <th>Oznaka</th>
             <th>Naziv</th>
