@@ -462,7 +462,7 @@ tbody tr:hover { background: rgba(242, 183, 5, 0.035); }
 
 .tree-cell.tree-last::before {
   bottom: auto;
-  width: 13px;
+  width: 10px;
   height: 20px;
   border-bottom: 2px solid var(--border-strong);
   border-bottom-left-radius: 8px;
