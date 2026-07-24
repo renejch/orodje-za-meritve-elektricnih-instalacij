@@ -187,13 +187,13 @@ function updateRazdelilnikOptions(circuits) {
   els.razdelilnikList.innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
 
-function buildCircuitRow(c) {
+function buildCircuitRow(c, isLast) {
   const tr = document.createElement('tr');
   tr.className = 'box-child-row';
 
   tr.innerHTML = `
     <td><span class="status-dot ${c.neustrezno ? 'status-bad' : 'status-ok'}" title="${c.neustrezno ? 'Ne ustreza' : 'Skladno'}"></span></td>
-    <td class="tree-cell">${escapeHtml(c.oznaka || '—')}</td>
+    <td class="tree-cell${isLast ? ' tree-last' : ''}">${escapeHtml(c.oznaka || '—')}</td>
     <td>${escapeHtml(c.naziv)}</td>
     <td>${escapeHtml(c.fazno || '—')}</td>
     <td class="num">${fmtNum(c.vodniki)}</td>
@@ -253,9 +253,9 @@ async function renderTable() {
     groupRow.innerHTML = `<td colspan="${TABLE_COLSPAN}">📦 ${escapeHtml(boxName)} <span class="count-badge">${boxCircuits.length}</span></td>`;
     els.tbody.appendChild(groupRow);
 
-    for (const c of boxCircuits) {
-      els.tbody.appendChild(buildCircuitRow(c));
-    }
+    boxCircuits.forEach((c, i) => {
+      els.tbody.appendChild(buildCircuitRow(c, i === boxCircuits.length - 1));
+    });
   }
 }
 
@@ -521,7 +521,6 @@ const META_SHEET_NAME = 'Podatki o objektu';
 const UNASSIGNED_BOX_LABEL = 'Brez razdelilnika';
 
 const CIRCUIT_HEADERS = [
-  'Razdelilnik',
   'Oznaka tokokroga',
   'Naziv tokokroga',
   'Tip tokokroga (1f/3f)',
@@ -545,7 +544,7 @@ const CIRCUIT_HEADERS = [
 ];
 
 const CIRCUIT_COLS = [
-  { wch: 18 }, { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 12 },
+  { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 12 },
   { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 },
   { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
   { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 30 },
@@ -553,7 +552,6 @@ const CIRCUIT_COLS = [
 
 function circuitToRow(c) {
   return [
-    c.razdelilnik,
     c.oznaka,
     c.naziv,
     c.fazno,
@@ -715,31 +713,30 @@ async function handleImportFile(e) {
     const ws = wb.Sheets[sheetName];
     const dataRows = XLSX.utils.sheet_to_json(ws, { header: 1 }).slice(1);
     dataRows.forEach((row, i) => {
-      if (!row || !row[2]) return;
-      const razdelilnikCol = row[0] != null ? String(row[0]).trim() : '';
+      if (!row || !row[1]) return;
       importedCircuits.push({
         neustrezno: isRowFlagged(ws, i + 1),
-        razdelilnik: razdelilnikCol || (sheetName === UNASSIGNED_BOX_LABEL ? '' : sheetName),
-        oznaka: row[1] != null ? String(row[1]) : '',
-        naziv: row[2] != null ? String(row[2]) : '',
-        fazno: row[3] != null ? String(row[3]) : '',
-        vodniki: numOrNull(row[4]),
-        prerez: numOrNull(row[5]),
-        glavnaIzenacitev: numOrNull(row[6]),
-        dodatnaIzenacitev: numOrNull(row[7]),
-        izolacija: numOrNull(row[8]),
-        karakteristika: row[9] != null ? stripPhasePrefix(String(row[9])) : '',
-        in: numOrNull(row[10]),
-        rcdCas: numOrNull(row[11]),
-        zanka: numOrNull(row[12]),
-        zankaL: numOrNull(row[13]),
-        rcdIn: numOrNull(row[14]),
-        rcdIdn: numOrNull(row[15]),
-        rcdId: numOrNull(row[16]),
-        rcdTd1: numOrNull(row[17]),
-        rcdTd5: numOrNull(row[18]),
-        rcdUc: numOrNull(row[19]),
-        opomba: row[20] != null ? String(row[20]) : '',
+        razdelilnik: sheetName === UNASSIGNED_BOX_LABEL ? '' : sheetName,
+        oznaka: row[0] != null ? String(row[0]) : '',
+        naziv: row[1] != null ? String(row[1]) : '',
+        fazno: row[2] != null ? String(row[2]) : '',
+        vodniki: numOrNull(row[3]),
+        prerez: numOrNull(row[4]),
+        glavnaIzenacitev: numOrNull(row[5]),
+        dodatnaIzenacitev: numOrNull(row[6]),
+        izolacija: numOrNull(row[7]),
+        karakteristika: row[8] != null ? stripPhasePrefix(String(row[8])) : '',
+        in: numOrNull(row[9]),
+        rcdCas: numOrNull(row[10]),
+        zanka: numOrNull(row[11]),
+        zankaL: numOrNull(row[12]),
+        rcdIn: numOrNull(row[13]),
+        rcdIdn: numOrNull(row[14]),
+        rcdId: numOrNull(row[15]),
+        rcdTd1: numOrNull(row[16]),
+        rcdTd5: numOrNull(row[17]),
+        rcdUc: numOrNull(row[18]),
+        opomba: row[19] != null ? String(row[19]) : '',
         fotos: [],
       });
     });
