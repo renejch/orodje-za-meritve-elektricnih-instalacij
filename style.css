@@ -452,14 +452,15 @@ tbody tr:hover { background: rgba(242, 183, 5, 0.035); }
 }
 
 .tree-cell.tree-last::before {
-  bottom: 50%;
+  bottom: auto;
+  height: 19px;
 }
 
 .tree-cell::after {
   content: '';
   position: absolute;
   left: 8px;
-  top: 50%;
+  top: 19px;
   width: 10px;
   border-top: 2px solid var(--border-strong);
 }
