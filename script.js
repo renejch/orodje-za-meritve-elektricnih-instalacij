@@ -84,6 +84,7 @@ const els = {
   cancelEdit: $('cancel-edit'),
 
   fRazdelilnik: $('f-razdelilnik'),
+  razdelilnikList: $('razdelilnik-list'),
   fOznaka: $('f-oznaka'),
   fNaziv: $('f-naziv'),
   fFazno: $('f-fazno'),
@@ -178,63 +179,83 @@ function slugify(text) {
 /* =========================================================
    Rendering
    ========================================================= */
+const TABLE_COLSPAN = 23;
+
+function updateRazdelilnikOptions(circuits) {
+  const names = [...new Set(circuits.map((c) => (c.razdelilnik || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
+  els.razdelilnikList.innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+function buildCircuitRow(c) {
+  const tr = document.createElement('tr');
+  tr.className = 'box-child-row';
+
+  tr.innerHTML = `
+    <td><span class="status-dot ${c.neustrezno ? 'status-bad' : 'status-ok'}" title="${c.neustrezno ? 'Ne ustreza' : 'Skladno'}"></span></td>
+    <td class="tree-cell">${escapeHtml(c.oznaka || '—')}</td>
+    <td>${escapeHtml(c.naziv)}</td>
+    <td>${escapeHtml(c.fazno || '—')}</td>
+    <td class="num">${fmtNum(c.vodniki)}</td>
+    <td class="num">${fmtNum(c.prerez)}</td>
+    <td class="num">${fmtNum(c.glavnaIzenacitev)}</td>
+    <td class="num">${fmtNum(c.dodatnaIzenacitev)}</td>
+    <td class="num">${fmtNum(c.izolacija)}</td>
+    <td>${escapeHtml(formatKarakteristika(c) || '—')}</td>
+    <td class="num">${fmtNum(c.in)}</td>
+    <td class="num">${fmtNum(c.rcdCas)}</td>
+    <td class="num">${fmtNum(c.zanka)}</td>
+    <td class="num">${fmtNum(c.zankaL)}</td>
+    <td class="num">${fmtNum(c.rcdIn)}</td>
+    <td class="num">${fmtNum(c.rcdIdn)}</td>
+    <td class="num">${fmtNum(c.rcdId)}</td>
+    <td class="num">${fmtNum(c.rcdTd1)}</td>
+    <td class="num">${fmtNum(c.rcdTd5)}</td>
+    <td class="num">${fmtNum(c.rcdUc)}</td>
+    <td class="note-cell">${escapeHtml(c.opomba || '')}</td>
+    <td></td>
+    <td class="row-actions">
+      <button type="button" class="btn-icon" data-action="edit" data-id="${c.id}" aria-label="Uredi tokokrog">✏️</button>
+      <button type="button" class="btn-icon" data-action="delete" data-id="${c.id}" aria-label="Izbriši tokokrog">🗑️</button>
+    </td>
+  `;
+
+  const photoCell = tr.children[21];
+  const photos = getPhotos(c);
+  if (photos.length) {
+    photoCell.classList.add('photo-cell');
+    photos.forEach((src, i) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `Fotografija ${i + 1} — ${c.naziv}`;
+      img.className = 'thumb';
+      img.title = 'Klikni za povečavo';
+      img.addEventListener('click', () => window.open(src, '_blank'));
+      photoCell.appendChild(img);
+    });
+  } else {
+    photoCell.innerHTML = '<span class="no-photo">—</span>';
+  }
+
+  return tr;
+}
+
 async function renderTable() {
   const circuits = await Store.getAllCircuits();
   els.circuitCount.textContent = circuits.length;
   els.emptyState.hidden = circuits.length !== 0;
   els.tbody.innerHTML = '';
+  updateRazdelilnikOptions(circuits);
 
-  for (const c of circuits) {
-    const tr = document.createElement('tr');
+  for (const [boxName, boxCircuits] of groupByBox(circuits)) {
+    const groupRow = document.createElement('tr');
+    groupRow.className = 'box-group-row';
+    groupRow.innerHTML = `<td colspan="${TABLE_COLSPAN}">📦 ${escapeHtml(boxName)} <span class="count-badge">${boxCircuits.length}</span></td>`;
+    els.tbody.appendChild(groupRow);
 
-    tr.innerHTML = `
-      <td><span class="status-dot ${c.neustrezno ? 'status-bad' : 'status-ok'}" title="${c.neustrezno ? 'Ne ustreza' : 'Skladno'}"></span></td>
-      <td>${escapeHtml(c.razdelilnik || '—')}</td>
-      <td>${escapeHtml(c.oznaka || '—')}</td>
-      <td>${escapeHtml(c.naziv)}</td>
-      <td>${escapeHtml(c.fazno || '—')}</td>
-      <td class="num">${fmtNum(c.vodniki)}</td>
-      <td class="num">${fmtNum(c.prerez)}</td>
-      <td class="num">${fmtNum(c.glavnaIzenacitev)}</td>
-      <td class="num">${fmtNum(c.dodatnaIzenacitev)}</td>
-      <td class="num">${fmtNum(c.izolacija)}</td>
-      <td>${escapeHtml(formatKarakteristika(c) || '—')}</td>
-      <td class="num">${fmtNum(c.in)}</td>
-      <td class="num">${fmtNum(c.rcdCas)}</td>
-      <td class="num">${fmtNum(c.zanka)}</td>
-      <td class="num">${fmtNum(c.zankaL)}</td>
-      <td class="num">${fmtNum(c.rcdIn)}</td>
-      <td class="num">${fmtNum(c.rcdIdn)}</td>
-      <td class="num">${fmtNum(c.rcdId)}</td>
-      <td class="num">${fmtNum(c.rcdTd1)}</td>
-      <td class="num">${fmtNum(c.rcdTd5)}</td>
-      <td class="num">${fmtNum(c.rcdUc)}</td>
-      <td class="note-cell">${escapeHtml(c.opomba || '')}</td>
-      <td></td>
-      <td class="row-actions">
-        <button type="button" class="btn-icon" data-action="edit" data-id="${c.id}" aria-label="Uredi tokokrog">✏️</button>
-        <button type="button" class="btn-icon" data-action="delete" data-id="${c.id}" aria-label="Izbriši tokokrog">🗑️</button>
-      </td>
-    `;
-
-    const photoCell = tr.children[22];
-    const photos = getPhotos(c);
-    if (photos.length) {
-      photoCell.classList.add('photo-cell');
-      photos.forEach((src, i) => {
-        const img = document.createElement('img');
-        img.src = src;
-        img.alt = `Fotografija ${i + 1} — ${c.naziv}`;
-        img.className = 'thumb';
-        img.title = 'Klikni za povečavo';
-        img.addEventListener('click', () => window.open(src, '_blank'));
-        photoCell.appendChild(img);
-      });
-    } else {
-      photoCell.innerHTML = '<span class="no-photo">—</span>';
+    for (const c of boxCircuits) {
+      els.tbody.appendChild(buildCircuitRow(c));
     }
-
-    els.tbody.appendChild(tr);
   }
 }
 

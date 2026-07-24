@@ -60,7 +60,8 @@
     <form id="circuit-form" novalidate>
       <div class="field-grid">
         <label>Razdelilnik
-          <input type="text" id="f-razdelilnik" placeholder="npr. R1 - Glavna omarica">
+          <input type="text" id="f-razdelilnik" list="razdelilnik-list" placeholder="npr. R1 - Glavna omarica" autocomplete="off">
+          <datalist id="razdelilnik-list"></datalist>
         </label>
         <label>Oznaka tokokroga *
           <input type="text" id="f-oznaka" required placeholder="npr. F1">
@@ -170,7 +171,6 @@
         <thead>
           <tr>
             <th>Status</th>
-            <th>Razdelilnik</th>
             <th>Oznaka</th>
             <th>Naziv</th>
             <th>Tip</th>
